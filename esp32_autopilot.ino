@@ -9,10 +9,14 @@
 //  Winkel intern in GRAD, Signal K liefert Radiant (wird beim Einlesen gewandelt).
 //  Vorzeichen: Kurs steigt = Drehung nach Steuerbord; Ruderwinkel + = Steuerbord.
 // ============================================================================
+
+struct Sig;
+struct Cmd;
+
 #include <Arduino.h>
 #include <WiFi.h>
-#include <ESPmDNS.h>
-#include <ArduinoOTA.h>
+//#include <ESPmDNS.h>
+//#include <ArduinoOTA.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
@@ -23,8 +27,8 @@
 #define PIN_STEP 25
 #define PIN_DIR  26
 #define PIN_EN   27           // Pololu ENABLE (active low)
-#define DEFAULT_SSID ""
-#define DEFAULT_PASS ""
+#define DEFAULT_SSID "Connection2"
+#define DEFAULT_PASS ".Sonja00"
 #define CONTROL_PERIOD_MS 50  // 20 Hz
 
 // ------------------------------- Konfiguration ------------------------------
@@ -122,7 +126,7 @@ void saveConfig() {
 // --------------------------------- Signale ----------------------------------
 struct Sig { float v = NAN; uint32_t t = 0; };
 Sig sHdg, sRot, sRud, sSog;   // Grad, Grad/s, Grad, km/h
-bool fresh(const Sig& s, uint32_t ms) { return s.t != 0 && (millis() - s.t) <= ms; }
+bool fresh(const Sig & s, uint32_t ms) { return s.t != 0 && (millis() - s.t) <= ms; }
 
 float wrap360(float a) { a = fmodf(a, 360.0f); if (a < 0) a += 360.0f; return a; }
 float wrap180(float a) { return wrap360(a + 180.0f) - 180.0f; }
@@ -412,11 +416,11 @@ void setupWifi() {
   } else {
     Serial.printf("WLAN verbunden, IP %s\n", WiFi.localIP().toString().c_str());
   }
-  MDNS.begin(cfg.host.c_str());
-  MDNS.addService("http", "tcp", 80);
-  ArduinoOTA.setHostname(cfg.host.c_str());
-  ArduinoOTA.onStart([]() { goStandby("OTA-Update"); });
-  ArduinoOTA.begin();
+//  MDNS.begin(cfg.host.c_str());
+//  MDNS.addService("http", "tcp", 80);
+// ArduinoOTA.setHostname(cfg.host.c_str());
+// ArduinoOTA.onStart([]() { goStandby("OTA-Update"); });
+// ArduinoOTA.begin();
 }
 
 void setup() {
@@ -450,7 +454,7 @@ void setup() {
 // ------------------------------------ Loop ----------------------------------
 void loop() {
   static uint32_t lastCtl = 0, lastStatus = 0;
-  ArduinoOTA.handle();
+  //ArduinoOTA.handle();
   skWs.loop();
 
   Cmd c;
