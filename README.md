@@ -58,4 +58,8 @@ Die Methoden-Signaturen habe ich aus dem Beispiel der Signal-K-Doku übernommen.
 
 Ob “Pilot” v0.1.0 bzw. die New-UI mit den Zustandsnamen standby/auto sauber umgehen, sehen wir erst beim Ausprobieren. Zur Not passen wir die Namen an.
 
+#define STEP_PIN    2
+#define DIR_PIN     1
+#define ENABLE_PIN  3
+
 Als Nächstes kann ich die ESP32-Firmware schreiben: WebSocket-Server, Signal-K-Client, Kaskadenregler, Schrittmotor, Failsafes und Konfig-Webseite. Wenn du willst, fange ich mit dem Grundgerüst an. Dafür bräuchte ich nur die Pins für STEP, DIR und ENABLE des Pololu-Treibers.
