@@ -1,0 +1,11 @@
+{
+  "name": "signalk-local-gui",
+  "version": "1.0.0",
+  "description": "Separate Signal K Webapp with reverse proxy for local device at 192.168.192.66 and App Dock double-click support",
+  "main": "index.js",
+  "keywords": ["signalk-webapp", "signalk-node-server-plugin", "signalk-category-utility"],
+  "license": "MIT",
+  "files": ["index.js", "public"],
+  "signalk-plugin-enabled-by-default": true,
+  "signalk": {"displayName": "Lokale GUI 192.168.192.66", "appIcon": "./public/icon.svg"}
+}

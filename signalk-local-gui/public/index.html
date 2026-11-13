@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lokale GUI</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#141820}iframe{width:100%;height:100%;border:0}.status{position:absolute;left:10px;bottom:10px;padding:5px 8px;background:#171717d9;color:#fff;font:12px sans-serif;border-radius:4px;display:none}</style>
+</head><body><iframe id="gui" title="Lokale GUI" allow="fullscreen"></iframe><div class="status" id="status"></div><script>
+(function(){
+  var frame=document.getElementById('gui'), status=document.getElementById('status');
+  var site='/plugins/signalk-local-gui/site/';
+  var fallback='http://192.168.192.66/';
+  var debug=new URLSearchParams(location.search).has('debug');
+  function note(message){ if(debug){status.style.display='block';status.textContent=message;} }
+  fetch('/plugins/signalk-local-gui/info',{credentials:'same-origin'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(data){frame.src=data.url||site;note('Proxy: '+frame.src);}).catch(function(e){frame.src=fallback;note('Direktmodus (App Dock kann Klicks ggf. nicht erkennen): '+e.message);});
+})();
+</script></body></html>
