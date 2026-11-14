@@ -20,8 +20,8 @@
 #define STEP_PIN   2
 #define DIR_PIN    1
 #define ENABLE_PIN 3          // Pololu ENABLE (active low)
-#define DEFAULT_SSID "Connection2"
-#define DEFAULT_PASS ".Sonja00"
+#define DEFAULT_SSID ""
+#define DEFAULT_PASS ""
 #define CONTROL_PERIOD_MS 50  // 20 Hz
 
 // ------------------------------- Konfiguration ------------------------------
@@ -42,6 +42,9 @@ struct Config {
   float maxErrT = 10.0f;  // ... laenger als [s] -> Standby
   bool  invMot = false, invRud = false, invRot = false;
 } cfg;
+
+// Typen muessen VOR der ersten Funktion stehen (Arduino-IDE erzeugt Prototypen dort)
+struct Sig { float v = NAN; uint32_t t = 0; };
 
 struct Field { const char* key; const char* label; char type; void* ptr; bool secret; };
 Field fields[] = {
@@ -117,7 +120,6 @@ void saveConfig() {
 }
 
 // --------------------------------- Signale ----------------------------------
-struct Sig { float v = NAN; uint32_t t = 0; };
 Sig sHdg, sRot, sRud, sSog;   // Grad, Grad/s, Grad, km/h
 bool fresh(const Sig& s, uint32_t ms) { return s.t != 0 && (millis() - s.t) <= ms; }
 
@@ -377,8 +379,13 @@ async function load(){const a=await (await fetch('/api/config')).json(),f=$('f')
  for(const x of a){const l=document.createElement('label');l.textContent=x.label;const i=document.createElement('input');i.name=x.key;
  if(x.type=='b'){i.type='checkbox';i.checked=x.value=='1'}else{i.type=x.secret?'password':'text';i.value=x.value;if(x.secret)i.placeholder='(unver\u00e4ndert)'}
  l.appendChild(i);f.appendChild(l)}}
-async function save(){const p=new URLSearchParams();for(const i of document.querySelectorAll('#f input'))p.append(i.name,i.type=='checkbox'?(i.checked?'1':'0'):i.value);
- await fetch('/api/config',{method:'POST',body:p});$('m').textContent='Gespeichert';setTimeout(()=>$('m').textContent='',2000)}
+async function save(){const p=new URLSearchParams(),sent={};
+ for(const i of document.querySelectorAll('#f input')){const v=i.type=='checkbox'?(i.checked?'1':'0'):i.value;p.append(i.name,v);if(i.type!='password')sent[i.name]=v}
+ let ok=false;
+ try{const r=await fetch('/api/config?'+p.toString(),{method:'POST'});
+  if(r.ok){await load();ok=true;
+   for(const i of document.querySelectorAll('#f input')){if(i.name in sent){const a=i.type=='checkbox'?(i.checked?'1':'0'):i.value,b=sent[i.name];if(a!==b&&!(a!==''&&Number(a)===Number(b)))ok=false}}}}catch(e){}
+ $('m').textContent=ok?'Gespeichert':'FEHLER: Werte nicht \u00fcbernommen';setTimeout(()=>$('m').textContent='',4000)}
 function jog(id,d){let t;const go=()=>post('/api/cmd?c=jog&v='+d),st=()=>clearInterval(t),b=$(id);
  b.onpointerdown=()=>{go();t=setInterval(go,250)};b.onpointerup=b.onpointerleave=b.onpointercancel=st}
 jog('jm',-1);jog('jp',1);
@@ -408,12 +415,15 @@ void setupWeb() {
     String s; serializeJson(d, s); server.send(200, "application/json", s);
   });
   server.on("/api/config", HTTP_POST, []() {
+    int n = 0;
     for (size_t i = 0; i < NFIELDS; i++) {
       if (!server.hasArg(fields[i].key)) continue;
+      n++;
       String v = server.arg(fields[i].key);
       if (fields[i].secret && v.length() == 0) continue;
       setField(fields[i], v);
     }
+    if (n == 0) { server.send(400, "text/plain", "keine Daten empfangen"); return; }
     saveConfig();
     server.send(200, "text/plain", "OK");
   });
