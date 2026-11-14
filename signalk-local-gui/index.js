@@ -33,6 +33,20 @@ module.exports = function (app) {
     const upstreamPath = pathFor(req.url || '/');
     const headers = { ...req.headers, host: cfg.host + ':' + cfg.port };
     for (const key of ['cookie', 'authorization', 'referer', 'origin']) delete headers[key];
+    // Hat ein Body-Parser des Signal-K-Servers den Request-Body schon gelesen,
+    // ist der Stream leer. Dann den geparsten Body wieder serialisieren und senden.
+    let bodyBuf = null;
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.readableEnded) {
+      const ct = String(req.headers['content-type'] || '');
+      const b = req.body;
+      if (Buffer.isBuffer(b)) bodyBuf = b;
+      else if (typeof b === 'string') bodyBuf = Buffer.from(b);
+      else if (b && /json/i.test(ct)) bodyBuf = Buffer.from(JSON.stringify(b));
+      else if (b && /urlencoded/i.test(ct)) bodyBuf = Buffer.from(new URLSearchParams(b).toString());
+      else bodyBuf = Buffer.alloc(0);
+      headers['content-length'] = String(bodyBuf.length);
+      delete headers['transfer-encoding'];
+    }
     // Unkomprimierte Antworten erlauben HTML- und CSS-Umschreibung.
     headers['accept-encoding'] = 'identity';
     const up = http.request({ host: cfg.host, port: cfg.port, path: upstreamPath, method: req.method, headers, timeout: 15000 }, (ur) => {
@@ -78,7 +92,7 @@ module.exports = function (app) {
       if (!res.headersSent) res.status(502).type('text/plain').send('Lokale GUI nicht erreichbar (' + cfg.host + ':' + cfg.port + '): ' + err.message);
       else res.end();
     });
-    req.pipe(up);
+    if (bodyBuf) up.end(bodyBuf); else req.pipe(up);
   }
   plugin.registerWithRouter = function (router) {
     router.get('/info', (req, res) => res.json({ url: prefix + '/site/', host: cfg.host, port: cfg.port, basePath: cfg.basePath }));
