@@ -17,9 +17,15 @@
 #include <FastAccelStepper.h>
 
 // ---------------------------- Hardware / Defaults ---------------------------
+// Treiber: ARCELI TB6600 (optogekoppelte Eingaenge). Verdrahtung "gemeinsame Kathode":
+//   PUL+ -> STEP_PIN, DIR+ -> DIR_PIN, ENA+ -> ENABLE_PIN, PUL-/DIR-/ENA- -> GND
+//   GPIO high = Optokoppler an. Beim TB6600 DEAKTIVIERT ein aktives ENA-Signal den Treiber,
+//   also GPIO high = Treiber aus, GPIO low = Treiber an (entspricht "active low").
+// ACHTUNG: GPIO2 ist beim ESP32-C3 ein Strapping-Pin (darf beim Booten nicht nach GND gezogen
+//   werden). Mit dem Optokoppler-Eingang daran besser einen anderen Pin fuer STEP waehlen.
 #define STEP_PIN   2
 #define DIR_PIN    1
-#define ENABLE_PIN 3          // Pololu ENABLE (active low)
+#define ENABLE_PIN 3
 #define DEFAULT_SSID ""
 #define DEFAULT_PASS ""
 #define CONTROL_PERIOD_MS 50  // 20 Hz
