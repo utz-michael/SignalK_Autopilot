@@ -27,7 +27,7 @@ flowchart LR
   KOMP[Maretron SSC300<br/>NMEA 2000] --> SK
   RUD[Ruderwinkel] --> SK
   SK -- "WebSocket (Delta-Stream)<br/>Kurs, ROT, Ruder, SOG" --> ESP[ESP32-C3 Mini<br/>Regler + Webseite]
-  ESP -- "STEP / DIR / ENABLE" --> TR[Pololu-Treiber<br/>+ NEMA17]
+  ESP -- "STEP / DIR / ENABLE" --> TR[TB6600-Treiber<br/>+ NEMA17]
   TR --> LR[Reibrad am Lenkrad]
   User((Bediener)) -- "Browser / Handy" --> ESP
   User -. "optional: Webapp in Signal K<br/>(signalk-local-gui)" .-> SK
@@ -59,7 +59,7 @@ SignalK_Autopilot/
 | Komponente | Beschreibung |
 |---|---|
 | Mikrocontroller | ESP32-C3 Mini (WLAN) |
-| Treiber | Pololu-Schrittmotortreiber (A4988/DRV8825-Typ) |
+| Treiber | ARCELI TB6600 (optogekoppelte Eingänge) |
 | Motor | NEMA 17 Schrittmotor |
 | Mechanik | Reibrad, das am Außendurchmesser des Lenkrads angreift (ausrückbar!) |
 | Antrieb | Motorboot als Vollgleiter mit Z-Antrieb, Autopilot nur in Verdrängerfahrt bis max. 15 km/h |
@@ -69,16 +69,21 @@ SignalK_Autopilot/
 
 **Pinbelegung (anpassbar über die Defines am Anfang des Sketches):**
 
-| Signal | GPIO |
-|---|---|
-| STEP | 2 |
-| DIR | 1 |
-| ENABLE (active low) | 3 |
+| Signal | GPIO | TB6600-Klemmen |
+|---|---|---|
+| STEP | 2 | PUL+ |
+| DIR | 1 | DIR+ |
+| ENABLE | 3 | ENA+ |
 
-Hinweise zum C3 Mini:
+Die jeweiligen Minus-Klemmen (`PUL−`, `DIR−`, `ENA−`) kommen an **GND** des ESP („gemeinsame Kathode“). Dann gilt: GPIO high = Optokoppler an.
 
-- GPIO2 ist beim ESP32-C3 ein **Strapping-Pin**. Zieht der Treiber ihn beim Booten nach unten, kann der Start scheitern. Dann STEP auf einen anderen Pin legen oder einen Pull-up setzen.
-- Ein Pull-up (ca. 10 kΩ) auf ENABLE hält den Treiber beim Booten abgeschaltet.
+### Hinweise zum TB6600
+
+- **ENABLE ist beim TB6600 invertiert gedacht:** Ein aktives ENA-Signal (Optokoppler an) **schaltet den Treiber ab**. Mit der obigen Verdrahtung bedeutet GPIO high „Treiber aus“ und GPIO low „Treiber an“. Das entspricht dem `active low`-Verhalten, das die Firmware annimmt. Ohne ENA-Verbindung ist der Treiber immer aktiv (Motor auch im Standby bestromt).
+- **3,3-V-Pegel:** Der TB6600 ist für 5 V Steuersignale ausgelegt. Am ESP mit 3,3 V und „gemeinsamer Kathode“ läuft er oft zuverlässig, der Optokoppler-Strom ist aber knapp. Bei Aussetzern einen Transistor- oder Pufferbaustein (z. B. ULN2003 oder ein 74HCT-Gatter mit 5 V) zwischenschalten. Bei Pegelwandlung mit invertierendem Baustein die Logik beachten.
+- **GPIO2 (STEP) ist ein Strapping-Pin** des ESP32-C3. Hängt dort die Optokoppler-Diode nach GND, kann der ESP beim Booten nicht mehr starten. Besser STEP auf einen freien Pin legen, z. B. GPIO4, und `STEP_PIN` im Sketch anpassen.
+- **DIP-Schalter am Treiber:** Mikroschritte (S1–S3) und Strom (S4–S6) einstellen. Strom mindestens in Höhe des Nennstroms des Motors, nicht höher als nötig. `kv`, `max. Hz` und Beschleunigung in der Konfiguration hängen direkt von der Mikroschrittzahl ab (bei 1/16 sind es 3200 Schritte pro Umdrehung).
+- **Richtungswechsel:** Der Treiber braucht etwas Vorlaufzeit zwischen DIR und STEP. Gehen beim Umkehren Schritte verloren, in `setDirectionPin(...)` eine Richtungs-Verzögerung setzen (falls deine FastAccelStepper-Version den dritten Parameter kennt).
 
 ## Funktionsweise der ESP-Firmware
 
@@ -270,7 +275,7 @@ Die Webseite nutzt diese Endpunkte. Sie können auch für eigene Tests verwendet
 | Standby mit "Sensordaten fehlen" | Pfade liefern keine Updates (im Signal-K-Data-Browser prüfen) |
 | Standby mit "Ruder reagiert nicht" | Reibrad rutscht, Motor zu schwach, Endanschlag, Ruderwinkel-Vorzeichen falsch |
 | Ruder pendelt | `kv` zu groß, Latenz, `Kd` zu klein |
-| ESP bootet nicht mit angeschlossenem Treiber | GPIO2 (STEP) ist Strapping-Pin, Pull-up oder anderen Pin nehmen |
+| ESP bootet nicht mit angeschlossenem Treiber | GPIO2 (STEP) ist Strapping-Pin: anderen Pin wählen (z. B. GPIO4) |
 | Plugin: "Lokale GUI nicht erreichbar" | Falsche ESP-Adresse in der Plugin-Konfiguration, ESP nicht im Netz, ESP hat eine neue DHCP-Adresse |
 | Plugin zeigt die Seite, Bedienung geht nicht | Proxy-Problem bei POST-Anfragen: ESP-Seite direkt aufrufen und Plugin-Log prüfen |
 
